@@ -1,88 +1,67 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-
-function Navbar() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/");
-  };
-
-  return (
-    <nav style={styles.nav}>
-      <Link to="/" style={styles.brand}>
-        🛒 CloudCart
-      </Link>
-      <div style={styles.links}>
-        <Link to="/products" style={styles.link}>
-          Products
-        </Link>
-        {user ? (
-          <>
-            <Link to="/cart" style={styles.link}>
-              Cart
-            </Link>
-            <Link to="/orders" style={styles.link}>
-              Orders
-            </Link>
-            <span style={styles.greeting}>Hi, {user.name}</span>
-            <button onClick={handleLogout} style={styles.btn}>
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <Link to="/login" style={styles.link}>
-              Login
-            </Link>
-            <Link to="/register" style={styles.btnLink}>
-              Register
-            </Link>
-          </>
-        )}
-      </div>
-    </nav>
-  );
-}
-
 const styles = {
   nav: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 24px",
-    background: "#1a1a2e",
-    color: "white",
+    padding: "16px 50px",
+    background: "rgba(15, 23, 42, 0.95)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
     position: "sticky",
     top: 0,
     zIndex: 1000,
   },
+
   brand: {
-    color: "#e94560",
-    fontWeight: "bold",
-    fontSize: "1.4rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
     textDecoration: "none",
+    color: "#ffffff",
+    fontSize: "1.8rem",
+    fontWeight: "800",
+    letterSpacing: "-0.5px",
   },
-  links: { display: "flex", alignItems: "center", gap: "20px" },
-  link: { color: "white", textDecoration: "none", fontSize: "0.95rem" },
+
+  links: {
+    display: "flex",
+    alignItems: "center",
+    gap: "28px",
+  },
+
+  link: {
+    color: "#d1d5db",
+    textDecoration: "none",
+    fontSize: "1rem",
+    fontWeight: "500",
+    transition: "all 0.3s ease",
+  },
+
+  greeting: {
+    color: "#94a3b8",
+    fontSize: "0.95rem",
+    fontWeight: "500",
+  },
+
   btn: {
     background: "#e94560",
-    color: "white",
+    color: "#fff",
     border: "none",
-    padding: "8px 16px",
-    borderRadius: "4px",
+    padding: "10px 20px",
+    borderRadius: "8px",
     cursor: "pointer",
+    fontWeight: "600",
+    transition: "0.3s ease",
   },
+
   btnLink: {
     background: "#e94560",
-    color: "white",
+    color: "#fff",
     textDecoration: "none",
-    padding: "8px 16px",
-    borderRadius: "4px",
+    padding: "10px 20px",
+    borderRadius: "8px",
+    fontWeight: "600",
+    transition: "0.3s ease",
   },
-  greeting: { color: "#aaa", fontSize: "0.9rem" },
 };
-
-export default Navbar;
