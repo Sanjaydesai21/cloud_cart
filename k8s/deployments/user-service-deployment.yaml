@@ -33,6 +33,7 @@ spec:
       labels:
         app: user-service
         version: "1.0"
+        tier: backend
     spec:
       serviceAccountName: cloudcart-app
       # Security context at Pod level
