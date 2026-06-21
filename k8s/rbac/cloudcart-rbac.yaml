@@ -39,9 +39,10 @@ subjects:
   - kind: ServiceAccount
     name: cloudcart-app
     namespace: cloudcart
+
 roleRef:
+  apiGroup: rbac.authorization.k8s.io
   kind: Role
-  apiGroups: rbac.authorization.k8s.io
   name: cloudcart-app-role
 
 ---
