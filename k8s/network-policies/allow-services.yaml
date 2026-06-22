@@ -8,67 +8,14 @@ spec:
   podSelector: {}
 
   policyTypes:
-  - Egress
-
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
----
-# allow-backend-egress-to-mysql.yaml
-
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-backend-egress-to-mysql
-  namespace: cloudcart
-
-spec:
-  podSelector:
-    matchLabels:
-      tier: backend
-
-  policyTypes:
     - Egress
 
   egress:
     - to:
-        - podSelector:
-            matchLabels:
-              app: mysql
+        - ipBlock:
+            cidr: 10.96.0.10/32
       ports:
+        - protocol: UDP
+          port: 53
         - protocol: TCP
-          port: 3306
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-mysql-from-backend
-  namespace: cloudcart
-
-spec:
-  podSelector:
-    matchLabels:
-      app: mysql
-
-  policyTypes:
-    - Ingress
-
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              tier: backend
-      ports:
-        - protocol: TCP
-          port: 3306
+          port: 53
