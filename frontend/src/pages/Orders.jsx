@@ -1,52 +1,76 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const ORDER_API = import.meta.env.VITE_ORDER_API || "http://localhost:3004";
 
 const STATUS_CONFIG = {
-  pending:   { color: "#f57c00", bg: "#fff3e0", icon: "⏳", label: "Pending" },
-  confirmed: { color: "#1976d2", bg: "#e3f2fd", icon: "✅", label: "Confirmed" },
-  shipped:   { color: "#7b1fa2", bg: "#f3e5f5", icon: "📦", label: "Shipped" },
-  delivered: { color: "#388e3c", bg: "#e8f5e9", icon: "🎉", label: "Delivered" },
-  cancelled: { color: "#c62828", bg: "#fce4ec", icon: "✖", label: "Cancelled" },
+  pending:   { color: "#d97706", bg: "#fffbeb", border: "#fde68a", icon: "⏳", label: "Order Placed", step: 0 },
+  confirmed: { color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", icon: "✅", label: "Confirmed", step: 1 },
+  shipped:   { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", icon: "📦", label: "Shipped", step: 2 },
+  delivered: { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", icon: "🎉", label: "Delivered", step: 3 },
+  cancelled: { color: "#dc2626", bg: "#fef2f2", border: "#fecaca", icon: "✖", label: "Cancelled", step: -1 },
 };
 
 const STEPS = ["pending", "confirmed", "shipped", "delivered"];
 
-function StatusBar({ status }) {
+const STEP_LABELS = [
+  { icon: "📋", title: "Order Placed", sub: "We've received your order" },
+  { icon: "✅", title: "Confirmed", sub: "Seller has confirmed" },
+  { icon: "🚚", title: "Shipped", sub: "On the way to you" },
+  { icon: "🏠", title: "Delivered", sub: "Enjoy your purchase!" },
+];
+
+function TrackingBar({ status }) {
   if (status === "cancelled") {
     return (
-      <div style={styles.cancelledBanner}>
-        ✖ This order was cancelled
+      <div style={styles.cancelledBar}>
+        <span style={styles.cancelledIcon}>✖</span>
+        <div>
+          <div style={styles.cancelledTitle}>Order Cancelled</div>
+          <div style={styles.cancelledSub}>This order has been cancelled. Refund will be processed within 5–7 business days.</div>
+        </div>
       </div>
     );
   }
-  const current = STEPS.indexOf(status);
+
+  const currentStep = STEPS.indexOf(status);
+
   return (
-    <div style={styles.statusBar}>
-      {STEPS.map((step, i) => {
-        const cfg = STATUS_CONFIG[step];
-        const done = i <= current;
+    <div style={styles.trackingBar}>
+      {STEP_LABELS.map((step, i) => {
+        const done = i <= currentStep;
+        const active = i === currentStep;
         return (
-          <div key={step} style={styles.stepWrap}>
-            <div style={{
-              ...styles.stepDot,
-              background: done ? cfg.color : "#e0e0e0",
-              transform: i === current ? "scale(1.2)" : "scale(1)",
-            }}>
-              {done ? cfg.icon : "○"}
-            </div>
-            <span style={{ ...styles.stepLabel, color: done ? cfg.color : "#bbb" }}>
-              {cfg.label}
-            </span>
-            {i < STEPS.length - 1 && (
+          <div key={i} style={styles.trackStep}>
+            {/* Connector line */}
+            {i > 0 && (
               <div style={{
                 ...styles.connector,
-                background: i < current ? cfg.color : "#e0e0e0",
+                background: i <= currentStep ? "#3b82f6" : "#e2e8f0",
               }} />
             )}
+            {/* Step dot */}
+            <div style={{
+              ...styles.stepDot,
+              background: done ? (active ? "#3b82f6" : "#22c55e") : "#fff",
+              border: done ? `2px solid ${active ? "#3b82f6" : "#22c55e"}` : "2px solid #e2e8f0",
+              boxShadow: active ? "0 0 0 4px rgba(59,130,246,0.15)" : "none",
+            }}>
+              {done ? (
+                <span style={{ fontSize: "0.75rem" }}>{active ? step.icon : "✓"}</span>
+              ) : (
+                <span style={{ color: "#cbd5e1", fontSize: "0.7rem" }}>{i + 1}</span>
+              )}
+            </div>
+            <div style={styles.stepInfo}>
+              <div style={{
+                ...styles.stepTitle,
+                color: done ? (active ? "#3b82f6" : "#16a34a") : "#94a3b8",
+              }}>{step.title}</div>
+              <div style={styles.stepSub}>{step.sub}</div>
+            </div>
           </div>
         );
       })}
@@ -59,58 +83,143 @@ function OrderCard({ order }) {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const date = new Date(order.created_at);
 
+  const formattedDate = date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const formattedTime = date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
-    <div style={styles.card}>
-      <div style={styles.cardTop}>
-        <div>
+    <div style={styles.orderCard}>
+      {/* Card header */}
+      <div style={styles.cardHeader}>
+        <div style={styles.cardHeaderLeft}>
           <div style={styles.orderIdRow}>
-            <span style={styles.orderId}>Order #{order.id}</span>
-            <span style={{ ...styles.statusPill, background: cfg.bg, color: cfg.color }}>
-              {cfg.icon} {cfg.label}
-            </span>
+            <span style={styles.orderIdLabel}>ORDER #</span>
+            <span style={styles.orderId}>{String(order.id).padStart(6, "0")}</span>
           </div>
-          <p style={styles.orderDate}>
-            Placed on {date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-            &nbsp;at {date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-          </p>
+          <div style={styles.orderDate}>Placed on {formattedDate} at {formattedTime}</div>
         </div>
-        <div style={styles.orderRight}>
-          <p style={styles.orderTotal}>₹{Number(order.total_amount).toLocaleString()}</p>
-          <p style={styles.orderItems}>{order.item_count} item{order.item_count !== 1 ? "s" : ""}</p>
+        <div style={styles.cardHeaderRight}>
+          <div style={{
+            ...styles.statusPill,
+            background: cfg.bg,
+            color: cfg.color,
+            border: `1px solid ${cfg.border}`,
+          }}>
+            {cfg.icon} {cfg.label}
+          </div>
         </div>
       </div>
 
-      <StatusBar status={order.status} />
+      {/* Order summary strip */}
+      <div style={styles.orderSummaryStrip}>
+        <div style={styles.stripItem}>
+          <span style={styles.stripLabel}>Items</span>
+          <span style={styles.stripValue}>{order.item_count} item{order.item_count !== 1 ? "s" : ""}</span>
+        </div>
+        <div style={styles.stripDivider} />
+        <div style={styles.stripItem}>
+          <span style={styles.stripLabel}>Total</span>
+          <span style={{ ...styles.stripValue, color: "#0f172a", fontWeight: 800 }}>
+            ₹{Number(order.total_amount).toLocaleString()}
+          </span>
+        </div>
+        <div style={styles.stripDivider} />
+        <div style={styles.stripItem}>
+          <span style={styles.stripLabel}>Payment</span>
+          <span style={styles.stripValue}>Online</span>
+        </div>
+        <div style={styles.stripDivider} />
+        <div style={styles.stripItem}>
+          <span style={styles.stripLabel}>Delivery</span>
+          <span style={{ ...styles.stripValue, color: "#16a34a" }}>FREE</span>
+        </div>
+      </div>
 
-      <button
-        style={styles.expandBtn}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        {expanded ? "▲ Hide details" : "▼ View details"}
-      </button>
+      {/* Tracking */}
+      <div style={styles.trackingSection}>
+        <TrackingBar status={order.status} />
+      </div>
 
+      {/* Expand toggle */}
+      <div style={styles.cardFooter}>
+        <button
+          style={styles.expandBtn}
+          onClick={() => setExpanded(e => !e)}
+        >
+          {expanded ? "▲ Hide order details" : "▼ View order details"}
+        </button>
+        <div style={styles.footerActions}>
+          <button style={styles.footerAction}>📄 Invoice</button>
+          <button style={styles.footerAction}>💬 Support</button>
+          {order.status === "delivered" && (
+            <button style={{ ...styles.footerAction, color: "#f59e0b" }}>⭐ Rate product</button>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded details */}
       {expanded && (
-        <div style={styles.details}>
-          <div style={styles.detailGrid}>
-            <div style={styles.detailItem}>
-              <span style={styles.detailLabel}>Order ID</span>
-              <span style={styles.detailVal}>#{order.id}</span>
+        <div style={styles.expandedDetails}>
+          <div style={styles.expandedGrid}>
+            <div style={styles.detailGroup}>
+              <div style={styles.detailGroupTitle}>Order Information</div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Order ID</span>
+                <span style={styles.detailVal}>#{String(order.id).padStart(6, "0")}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Order Date</span>
+                <span style={styles.detailVal}>{formattedDate}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Order Time</span>
+                <span style={styles.detailVal}>{formattedTime}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Status</span>
+                <span style={{ ...styles.detailVal, color: cfg.color, fontWeight: 700 }}>
+                  {cfg.icon} {cfg.label}
+                </span>
+              </div>
             </div>
-            <div style={styles.detailItem}>
-              <span style={styles.detailLabel}>Items</span>
-              <span style={styles.detailVal}>{order.item_count}</span>
+            <div style={styles.detailGroup}>
+              <div style={styles.detailGroupTitle}>Payment Details</div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Subtotal</span>
+                <span style={styles.detailVal}>₹{Number(order.total_amount).toLocaleString()}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Delivery</span>
+                <span style={{ ...styles.detailVal, color: "#16a34a" }}>FREE</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailKey}>Tax (18% GST)</span>
+                <span style={styles.detailVal}>Included</span>
+              </div>
+              <div style={{ ...styles.detailRow, borderTop: "1px solid #f1f5f9", paddingTop: "8px", marginTop: "4px" }}>
+                <span style={{ ...styles.detailKey, fontWeight: 700, color: "#1e293b" }}>Total Paid</span>
+                <span style={{ ...styles.detailVal, color: "#0f172a", fontWeight: 800, fontSize: "1rem" }}>
+                  ₹{Number(order.total_amount).toLocaleString()}
+                </span>
+              </div>
             </div>
-            <div style={styles.detailItem}>
-              <span style={styles.detailLabel}>Total Paid</span>
-              <span style={{ ...styles.detailVal, color: "#e94560", fontWeight: 800 }}>
-                ₹{Number(order.total_amount).toLocaleString()}
-              </span>
-            </div>
-            <div style={styles.detailItem}>
-              <span style={styles.detailLabel}>Status</span>
-              <span style={{ ...styles.detailVal, color: cfg.color, fontWeight: 700 }}>
-                {cfg.icon} {cfg.label}
-              </span>
+            <div style={styles.detailGroup}>
+              <div style={styles.detailGroupTitle}>Delivery Address</div>
+              <div style={styles.addressCard}>
+                <div style={styles.addressName}>Home</div>
+                <div style={styles.addressText}>
+                  123, Sample Street, Near Park<br />
+                  Mumbai, Maharashtra 400001<br />
+                  India
+                </div>
+                <div style={styles.addressPhone}>📞 +91 98765 43210</div>
+              </div>
             </div>
           </div>
         </div>
@@ -122,6 +231,7 @@ function OrderCard({ order }) {
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
   const { token } = useAuth();
   const navigate = useNavigate();
 
@@ -130,44 +240,141 @@ function Orders() {
       .get(`${ORDER_API}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((r) => setOrders(r.data.orders))
+      .then(r => setOrders(r.data.orders))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
+  const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
+
   if (loading) {
     return (
       <div style={styles.loadingWrap}>
-        <div style={{ fontSize: "2.5rem" }}>📦</div>
-        <p style={{ color: "#888", marginTop: "12px" }}>Loading your orders…</p>
+        <div style={styles.loadingBox}>
+          <div style={{ fontSize: "2.5rem" }}>📦</div>
+          <p style={{ color: "#64748b", marginTop: "12px", fontSize: "0.9rem" }}>Loading your orders…</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div style={styles.page}>
+      {/* Header */}
       <div style={styles.pageHeader}>
-        <div style={styles.pageHeaderInner}>
-          <h1 style={styles.pageTitle}>📦 Your Orders</h1>
-          <p style={styles.pageSubtitle}>{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+        <div style={styles.headerInner}>
+          <div>
+            <div style={styles.breadcrumb}>
+              <Link to="/" style={styles.breadLink}>Home</Link>
+              <span style={styles.breadSep}>/</span>
+              <span style={{ color: "#64748b", fontSize: "0.8rem" }}>My Orders</span>
+            </div>
+            <h1 style={styles.pageTitle}>My Orders</h1>
+            <p style={styles.pageSubtitle}>{orders.length} order{orders.length !== 1 ? "s" : ""} placed</p>
+          </div>
+          <div style={styles.headerSearch}>
+            <input
+              style={styles.searchInput}
+              placeholder="Search orders by ID or product…"
+            />
+          </div>
         </div>
       </div>
 
       <div style={styles.container}>
         {orders.length === 0 ? (
-          <div style={styles.empty}>
-            <div style={{ fontSize: "4rem", marginBottom: "16px" }}>📭</div>
-            <h2 style={{ color: "#1a1a2e", margin: "0 0 8px" }}>No orders yet</h2>
-            <p style={{ color: "#999", marginBottom: "28px" }}>Your order history will appear here once you shop.</p>
+          <div style={styles.emptyState}>
+            <div style={{ fontSize: "5rem", marginBottom: "20px" }}>📭</div>
+            <h2 style={styles.emptyTitle}>No orders yet</h2>
+            <p style={styles.emptySub}>
+              Looks like you haven't placed any orders. Start shopping to see your orders here!
+            </p>
             <button onClick={() => navigate("/products")} style={styles.shopBtn}>
               Start Shopping →
             </button>
           </div>
         ) : (
-          <div style={styles.ordersList}>
-            {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
+          <div style={styles.layout}>
+            {/* Sidebar */}
+            <aside style={styles.sidebar}>
+              <div style={styles.sideCard}>
+                <div style={styles.sideTitle}>Filter Orders</div>
+                {[
+                  ["all", "All Orders", orders.length],
+                  ["pending", "Pending", orders.filter(o => o.status === "pending").length],
+                  ["confirmed", "Confirmed", orders.filter(o => o.status === "confirmed").length],
+                  ["shipped", "Shipped", orders.filter(o => o.status === "shipped").length],
+                  ["delivered", "Delivered", orders.filter(o => o.status === "delivered").length],
+                  ["cancelled", "Cancelled", orders.filter(o => o.status === "cancelled").length],
+                ].map(([val, label, count]) => (
+                  <button
+                    key={val}
+                    style={{
+                      ...styles.filterBtn,
+                      background: filter === val ? "#eff6ff" : "transparent",
+                      color: filter === val ? "#1d4ed8" : "#374151",
+                      borderLeft: filter === val ? "3px solid #3b82f6" : "3px solid transparent",
+                    }}
+                    onClick={() => setFilter(val)}
+                  >
+                    <span>{label}</span>
+                    <span style={{
+                      ...styles.filterCount,
+                      background: filter === val ? "#dbeafe" : "#f1f5f9",
+                      color: filter === val ? "#1d4ed8" : "#94a3b8",
+                    }}>{count}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick stats */}
+              <div style={styles.statsCard}>
+                <div style={styles.sideTitle}>Order Stats</div>
+                <div style={styles.statRow}>
+                  <span style={styles.statLabel}>Total Spent</span>
+                  <span style={styles.statValue}>
+                    ₹{orders.reduce((s, o) => s + Number(o.total_amount), 0).toLocaleString()}
+                  </span>
+                </div>
+                <div style={styles.statRow}>
+                  <span style={styles.statLabel}>Items Ordered</span>
+                  <span style={styles.statValue}>
+                    {orders.reduce((s, o) => s + o.item_count, 0)}
+                  </span>
+                </div>
+                <div style={styles.statRow}>
+                  <span style={styles.statLabel}>Avg. Order Value</span>
+                  <span style={styles.statValue}>
+                    ₹{orders.length ? Math.round(orders.reduce((s, o) => s + Number(o.total_amount), 0) / orders.length).toLocaleString() : 0}
+                  </span>
+                </div>
+              </div>
+            </aside>
+
+            {/* Orders list */}
+            <div style={styles.mainCol}>
+              <div style={styles.listHeader}>
+                <span style={styles.listCount}>{filtered.length} order{filtered.length !== 1 ? "s" : ""}</span>
+                <select style={styles.sortSelect}>
+                  <option>Newest first</option>
+                  <option>Oldest first</option>
+                  <option>Highest amount</option>
+                </select>
+              </div>
+
+              {filtered.length === 0 ? (
+                <div style={styles.filterEmpty}>
+                  <div style={{ fontSize: "2rem", marginBottom: "10px" }}>🔍</div>
+                  <p style={{ color: "#64748b", margin: 0 }}>No {filter} orders found</p>
+                </div>
+              ) : (
+                <div style={styles.ordersList}>
+                  {filtered.map(order => (
+                    <OrderCard key={order.id} order={order} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -176,126 +383,323 @@ function Orders() {
 }
 
 const styles = {
-  page: { background: "#f8f9fc", minHeight: "100vh", paddingBottom: "60px" },
-  loadingWrap: { textAlign: "center", padding: "120px 20px" },
+  page: { background: "#f1f5f9", minHeight: "100vh", paddingBottom: "60px" },
+
+  loadingWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "400px",
+  },
+  loadingBox: { textAlign: "center" },
 
   pageHeader: {
-    background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 100%)",
-    padding: "36px 0 32px",
+    background: "#fff",
+    borderBottom: "1px solid #e2e8f0",
+    padding: "20px 0",
   },
-  pageHeaderInner: { maxWidth: "900px", margin: "0 auto", padding: "0 20px" },
-  pageTitle: { color: "#fff", fontSize: "1.8rem", fontWeight: 800, margin: "0 0 4px" },
-  pageSubtitle: { color: "rgba(255,255,255,0.55)", margin: 0, fontSize: "0.9rem" },
+  headerInner: {
+    maxWidth: "1280px",
+    margin: "0 auto",
+    padding: "0 24px",
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: "20px",
+  },
+  breadcrumb: { display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" },
+  breadLink: { color: "#3b82f6", textDecoration: "none", fontSize: "0.8rem" },
+  breadSep: { color: "#cbd5e1", fontSize: "0.8rem" },
+  pageTitle: { fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", margin: "0 0 2px" },
+  pageSubtitle: { color: "#64748b", fontSize: "0.82rem", margin: 0 },
+  headerSearch: {},
+  searchInput: {
+    padding: "9px 14px",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: "8px",
+    fontSize: "0.87rem",
+    outline: "none",
+    width: "280px",
+    color: "#1e293b",
+  },
 
-  container: { maxWidth: "900px", margin: "0 auto", padding: "32px 20px" },
-  ordersList: { display: "flex", flexDirection: "column", gap: "20px" },
+  container: {
+    maxWidth: "1280px",
+    margin: "20px auto",
+    padding: "0 24px",
+  },
 
-  // Card
-  card: {
+  emptyState: {
+    textAlign: "center",
+    padding: "80px 20px",
+    background: "#fff",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0",
+  },
+  emptyTitle: { fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", margin: "0 0 8px" },
+  emptySub: { color: "#64748b", margin: "0 0 28px", maxWidth: "400px", marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 },
+  shopBtn: {
+    background: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    padding: "13px 32px",
+    borderRadius: "10px",
+    fontSize: "0.95rem",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
+  layout: {
+    display: "grid",
+    gridTemplateColumns: "220px 1fr",
+    gap: "20px",
+    alignItems: "start",
+  },
+
+  sidebar: { display: "flex", flexDirection: "column", gap: "12px", position: "sticky", top: "120px" },
+  sideCard: {
     background: "#fff",
     borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+    padding: "16px",
+    border: "1px solid #e2e8f0",
   },
-  cardTop: {
+  sideTitle: {
+    fontSize: "0.7rem",
+    fontWeight: 800,
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    marginBottom: "12px",
+  },
+  filterBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    padding: "9px 10px 9px 12px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    marginBottom: "2px",
+    transition: "all 0.15s",
+  },
+  filterCount: {
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    padding: "2px 8px",
+    borderRadius: "12px",
+  },
+  statsCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "16px",
+    border: "1px solid #e2e8f0",
+  },
+  statRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "7px 0",
+    borderBottom: "1px solid #f8fafc",
+  },
+  statLabel: { color: "#64748b", fontSize: "0.8rem" },
+  statValue: { color: "#0f172a", fontWeight: 800, fontSize: "0.88rem" },
+
+  mainCol: {},
+  listHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "12px",
+  },
+  listCount: { color: "#64748b", fontSize: "0.82rem" },
+  sortSelect: {
+    padding: "7px 12px",
+    border: "1px solid #e2e8f0",
+    borderRadius: "8px",
+    fontSize: "0.82rem",
+    color: "#374151",
+    background: "#fff",
+    outline: "none",
+    cursor: "pointer",
+  },
+  filterEmpty: {
+    textAlign: "center",
+    padding: "60px",
+    background: "#fff",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+  },
+  ordersList: { display: "flex", flexDirection: "column", gap: "14px" },
+
+  // Order card
+  orderCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    overflow: "hidden",
+  },
+  cardHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: "20px",
+    padding: "18px 24px",
+    background: "#f8fafc",
+    borderBottom: "1px solid #f1f5f9",
   },
-  orderIdRow: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" },
-  orderId: { fontWeight: 800, fontSize: "1.05rem", color: "#1a1a2e" },
+  cardHeaderLeft: {},
+  orderIdRow: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" },
+  orderIdLabel: {
+    background: "#e2e8f0",
+    color: "#64748b",
+    fontSize: "0.62rem",
+    fontWeight: 800,
+    padding: "2px 7px",
+    borderRadius: "4px",
+    letterSpacing: "0.5px",
+  },
+  orderId: { fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" },
+  orderDate: { color: "#94a3b8", fontSize: "0.78rem" },
+  cardHeaderRight: {},
   statusPill: {
-    padding: "4px 12px",
+    padding: "6px 14px",
     borderRadius: "20px",
     fontSize: "0.8rem",
     fontWeight: 700,
   },
-  orderDate: { color: "#999", fontSize: "0.83rem", margin: 0 },
-  orderRight: { textAlign: "right" },
-  orderTotal: { color: "#e94560", fontWeight: 800, fontSize: "1.2rem", margin: "0 0 2px" },
-  orderItems: { color: "#aaa", fontSize: "0.83rem", margin: 0 },
 
-  // Status bar
-  statusBar: {
+  orderSummaryStrip: {
     display: "flex",
-    alignItems: "center",
-    marginBottom: "16px",
+    padding: "14px 24px",
+    borderBottom: "1px solid #f1f5f9",
+  },
+  stripItem: { flex: 1, textAlign: "center" },
+  stripLabel: { display: "block", color: "#94a3b8", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "3px" },
+  stripValue: { color: "#374151", fontSize: "0.88rem", fontWeight: 600 },
+  stripDivider: { width: "1px", background: "#f1f5f9" },
+
+  // Tracking
+  trackingSection: { padding: "24px" },
+  trackingBar: {
+    display: "flex",
+    alignItems: "flex-start",
     position: "relative",
   },
-  stepWrap: { display: "flex", flexDirection: "column", alignItems: "center", position: "relative", flex: 1 },
+  trackStep: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    position: "relative",
+  },
+  connector: {
+    position: "absolute",
+    top: "18px",
+    left: "-50%",
+    right: "50%",
+    height: "3px",
+    zIndex: 0,
+  },
   stepDot: {
-    width: "32px",
-    height: "32px",
+    width: "36px",
+    height: "36px",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "0.85rem",
-    color: "#fff",
-    fontWeight: 700,
-    transition: "all 0.3s",
-    marginBottom: "6px",
     zIndex: 1,
+    transition: "all 0.3s",
+    marginBottom: "8px",
+    flexShrink: 0,
   },
-  stepLabel: { fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.3px" },
-  connector: {
-    position: "absolute",
-    top: "16px",
-    left: "calc(50% + 16px)",
-    right: "calc(-50% + 16px)",
-    height: "3px",
-    zIndex: 0,
-  },
-  cancelledBanner: {
-    background: "#fce4ec",
-    color: "#c62828",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    fontWeight: 700,
-    fontSize: "0.9rem",
-    marginBottom: "16px",
-  },
+  stepInfo: { textAlign: "center", paddingTop: "2px" },
+  stepTitle: { fontSize: "0.78rem", fontWeight: 700, marginBottom: "3px" },
+  stepSub: { color: "#94a3b8", fontSize: "0.68rem" },
 
+  cancelledBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    background: "#fef2f2",
+    border: "1px solid #fecaca",
+    borderRadius: "10px",
+    padding: "14px 18px",
+    margin: "16px 24px",
+  },
+  cancelledIcon: { fontSize: "1.5rem", flexShrink: 0 },
+  cancelledTitle: { fontWeight: 800, color: "#dc2626", fontSize: "0.9rem", marginBottom: "3px" },
+  cancelledSub: { color: "#b91c1c", fontSize: "0.78rem" },
+
+  cardFooter: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 24px",
+    borderTop: "1px solid #f1f5f9",
+    background: "#f8fafc",
+  },
   expandBtn: {
     background: "none",
     border: "none",
-    color: "#e94560",
+    color: "#3b82f6",
     cursor: "pointer",
-    fontSize: "0.85rem",
+    fontSize: "0.82rem",
+    fontWeight: 700,
+    padding: 0,
+  },
+  footerActions: { display: "flex", gap: "16px" },
+  footerAction: {
+    background: "none",
+    border: "none",
+    color: "#374151",
+    cursor: "pointer",
+    fontSize: "0.78rem",
     fontWeight: 600,
     padding: 0,
-    marginTop: "4px",
   },
 
-  details: { marginTop: "16px", borderTop: "1px solid #f0f0f0", paddingTop: "16px" },
-  detailGrid: {
+  expandedDetails: {
+    padding: "20px 24px",
+    borderTop: "1px solid #f1f5f9",
+    background: "#fafbfc",
+  },
+  expandedGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4,1fr)",
-    gap: "16px",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "24px",
   },
-  detailItem: { display: "flex", flexDirection: "column", gap: "4px" },
-  detailLabel: { color: "#aaa", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" },
-  detailVal: { color: "#1a1a2e", fontWeight: 600, fontSize: "0.95rem" },
+  detailGroup: {},
+  detailGroupTitle: {
+    fontSize: "0.72rem",
+    fontWeight: 800,
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    marginBottom: "12px",
+    paddingBottom: "8px",
+    borderBottom: "1px solid #e2e8f0",
+  },
+  detailRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "6px 0",
+    fontSize: "0.82rem",
+  },
+  detailKey: { color: "#64748b" },
+  detailVal: { color: "#1e293b", fontWeight: 600 },
 
-  // Empty
-  empty: {
-    textAlign: "center",
-    padding: "100px 20px",
+  addressCard: {
     background: "#fff",
-    borderRadius: "16px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-  },
-  shopBtn: {
-    background: "#e94560",
-    color: "#fff",
-    border: "none",
-    padding: "14px 32px",
+    border: "1px solid #e2e8f0",
     borderRadius: "8px",
-    fontSize: "1rem",
-    fontWeight: 700,
-    cursor: "pointer",
+    padding: "12px",
   },
+  addressName: { fontWeight: 800, color: "#0f172a", fontSize: "0.85rem", marginBottom: "6px" },
+  addressText: { color: "#475569", fontSize: "0.8rem", lineHeight: 1.6, marginBottom: "6px" },
+  addressPhone: { color: "#64748b", fontSize: "0.78rem" },
 };
 
 export default Orders;
