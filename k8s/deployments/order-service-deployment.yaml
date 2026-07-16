@@ -49,7 +49,7 @@ spec:
       containers:
         - name: order-service
           image: 194226864100.dkr.ecr.us-east-1.amazonaws.com/cloudcart/order-service:v1
-          imagePullPolicy: Never # Use local Minikube image
+          imagePullPolicy: Always # Use local Minikube image
 
           ports:
             - containerPort: 3004
