@@ -84,42 +84,28 @@ module "acm" {
 # Controller running). Comment this module block out until then, or use
 # `terraform apply -target` as described in the step-by-step commands below.
 # ---------------------------------------------------------------------------
-##############################################
-# Frontend
-# sanjaydesai.xyz -> CloudFront
-##############################################
+module "cloudfront" {
+  source = "./modules/cloudfront"
 
-resource "aws_route53_record" "frontend" {
+  project_name     = var.project_name
+  app_subdomain    = var.app_subdomain
+  cf_origin_secret = var.cf_origin_secret
+  certificate_arn  = module.acm.certificate_arn
+}
+
+# ---------------------------------------------------------------------------
+# Route 53 A record — cloudcart.sanjaydesai.xyz -> CloudFront
+# (Phase 13 pointed this at the ALB directly; Phase 14 moves it to CloudFront.
+#  This file already reflects the final Phase 14 state.)
+# ---------------------------------------------------------------------------
+resource "aws_route53_record" "app" {
   zone_id = module.acm.route53_zone_id
-  name    = "sanjaydesai.xyz"
+  name    = var.app_subdomain
   type    = "A"
 
   alias {
     name                   = module.cloudfront.cloudfront_domain_name
     zone_id                = module.cloudfront.cloudfront_hosted_zone_id
     evaluate_target_health = false
-  }
-}
-
-##############################################
-# Backend
-# cloudcart.sanjaydesai.xyz -> ALB
-##############################################
-
-data "aws_lb" "cloudcart" {
-  tags = {
-    "ingress.k8s.aws/stack" = "${var.project_name}/${var.project_name}-ingress"
-  }
-}
-
-resource "aws_route53_record" "backend" {
-  zone_id = module.acm.route53_zone_id
-  name    = "cloudcart.sanjaydesai.xyz"
-  type    = "A"
-
-  alias {
-    name                   = data.aws_lb.cloudcart.dns_name
-    zone_id                = data.aws_lb.cloudcart.zone_id
-    evaluate_target_health = true
   }
 }
