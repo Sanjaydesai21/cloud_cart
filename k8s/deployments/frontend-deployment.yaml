@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: "194226864100.dkr.ecr.us-east-1.amazonaws.com/cloudcart/frontend:v1"
+          image: 194226864100.dkr.ecr.us-east-1.amazonaws.com/cloudcart/frontend:v1
           imagePullPolicy: Always
           ports:
             - containerPort: 80
