@@ -12,19 +12,20 @@ resource "aws_cloudfront_distribution" "main" {
   aliases             = [var.app_subdomain]
 
   origin {
-
     domain_name = data.aws_lb.cloudcart.dns_name
     origin_id   = "alb-origin"
 
+    # Custom header prevents users from bypassing CloudFront and hitting the ALB directly
+    custom_header {
+      name  = "X-CloudFront-Secret"
+      value = var.cf_origin_secret
+    }
+
     custom_origin_config {
-      http_port  = 80
-      https_port = 443
-
-      origin_protocol_policy = "http-only"
-
-      origin_ssl_protocols = [
-        "TLSv1.2"
-      ]
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
