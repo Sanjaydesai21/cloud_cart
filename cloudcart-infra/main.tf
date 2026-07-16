@@ -98,14 +98,46 @@ module "cloudfront" {
 # (Phase 13 pointed this at the ALB directly; Phase 14 moves it to CloudFront.
 #  This file already reflects the final Phase 14 state.)
 # ---------------------------------------------------------------------------
-resource "aws_route53_record" "app" {
+############################################################
+# Lookup the ALB created by AWS Load Balancer Controller
+############################################################
+
+data "aws_lb" "cloudcart" {
+  tags = {
+    "ingress.k8s.aws/stack" = "${var.project_name}/${var.project_name}-ingress"
+  }
+}
+
+############################################################
+# Frontend
+# sanjaydesai.xyz -> CloudFront
+############################################################
+
+resource "aws_route53_record" "frontend" {
   zone_id = module.acm.route53_zone_id
-  name    = var.app_subdomain
+  name    = var.domain_name
   type    = "A"
 
   alias {
     name                   = module.cloudfront.cloudfront_domain_name
     zone_id                = module.cloudfront.cloudfront_hosted_zone_id
     evaluate_target_health = false
+  }
+}
+
+############################################################
+# Backend
+# cloudcart.sanjaydesai.xyz -> ALB
+############################################################
+
+resource "aws_route53_record" "backend" {
+  zone_id = module.acm.route53_zone_id
+  name    = var.app_subdomain
+  type    = "A"
+
+  alias {
+    name                   = data.aws_lb.cloudcart.dns_name
+    zone_id                = data.aws_lb.cloudcart.zone_id
+    evaluate_target_health = true
   }
 }
