@@ -82,7 +82,7 @@ terraform apply -target=module.vpc
 
 ```bash
 terraform plan  -target=module.eks -target=module.iam
-terraform apply -target=module.eks -target=module.iam
+terraform apply -target=module.iam -target=module.eks
 
 # Connect kubectl
 aws eks update-kubeconfig --region us-east-1 --name cloudcart-cluster
